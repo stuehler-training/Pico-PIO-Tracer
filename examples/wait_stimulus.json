@@ -1,0 +1,9 @@
+{
+  "pins": [
+    {"cycle": 0, "pin": 2, "value": 0, "note": "input starts low"},
+    {"cycle": 5, "pin": 2, "value": 1, "note": "rising edge"},
+    {"cycle": 12, "pin": 2, "value": 0, "note": "falling edge"}
+  ],
+  "rx_get": [],
+  "tx": []
+}

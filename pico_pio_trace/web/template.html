@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+__STYLES__
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div>
+      <h1 id="page-title">__TITLE__</h1>
+      <div id="trace-subtitle" class="subtitle"><span class="mono">__PROGRAM__</span> from __SOURCE__; RP2040 PIO state machine __SM_ID__</div>
+    </div>
+  </div>
+</header>
+<main>
+<section class="cards" aria-label="Trace summary">
+  <div class="card"><span>Cycles</span><b id="card-cycles">__CYCLES__</b></div>
+  <div class="card"><span>State-machine frequency</span><b id="card-frequency">__FREQUENCY__</b></div>
+  <div class="card"><span>Cycle period</span><b id="card-period">__PERIOD__</b></div>
+  <div class="card"><span>Trace duration</span><b id="card-duration">__DURATION__</b></div>
+  <div class="card"><span>TX / RX FIFO usage</span><b id="card-fifo-usage">TX __INITIAL_TX_LEVEL__ / __TX_CAPACITY__ · RX __INITIAL_RX_LEVEL__ / __RX_CAPACITY__</b><small class="card-note">cycle start → host events → end</small></div>
+  <div class="card"><span>IRQ flags</span><b id="card-irq-flags" class="mono">0b00000000</b><small class="card-note">end of selected cycle</small></div>
+  <div class="card"><span>FIFO join</span><b id="card-fifo-join">__FIFO_JOIN__</b></div>
+</section>
+
+<section class="panel editor" aria-labelledby="editor-heading">
+  <div class="section-heading">
+    <div>
+      <h2 id="editor-heading">Interactive input editor</h2>
+      <p>Choose a state, then click a GPIO waveform at the cycle where the external line should change. The browser reruns the PIO state machine and updates WAIT, PC, FIFO, output, and debugger state.</p>
+    </div>
+    <div id="simulation-status" class="status ready" role="status">Ready</div>
+  </div>
+  <div class="editor-grid">
+    <fieldset class="tool-group">
+      <legend>Click action</legend>
+      <button type="button" class="tool active" data-tool="1" title="Keyboard: 1"><span class="logic one">1</span> Drive high</button>
+      <button type="button" class="tool" data-tool="0" title="Keyboard: 0"><span class="logic zero">0</span> Drive low</button>
+      <button type="button" class="tool" data-tool="Z" title="Keyboard: Z"><span class="logic zed">Z</span> Release</button>
+      <button type="button" class="tool" data-tool="erase" title="Keyboard: Delete"><span class="logic erase">×</span> Delete transition</button>
+      <button type="button" class="tool" data-tool="inspect" title="Keyboard: I"><span class="logic inspect">i</span> Inspect only</button>
+    </fieldset>
+    <div class="editor-actions">
+      <label>Simulation cycles
+        <input id="simulation-cycles" type="number" min="1" step="1" value="__CYCLES_RAW__">
+      </label>
+      <button id="rerun" type="button">Run simulation</button>
+      <label class="check"><input id="auto-rerun" type="checkbox" checked> Rerun after each edit</label>
+      <button id="undo" type="button" disabled>Undo</button>
+      <button id="redo" type="button" disabled>Redo</button>
+      <button id="reset-edits" type="button">Reset embedded events</button>
+      <button id="save-stimulus" type="button">Save stimulus JSON</button>
+      <button id="load-stimulus" type="button">Load stimulus JSON</button>
+      <input id="stimulus-file" type="file" accept="application/json,.json" hidden>
+    </div>
+  </div>
+  <div class="fifo-editor" aria-labelledby="fifo-editor-heading">
+    <div class="fifo-editor-heading">
+      <div>
+        <h3 id="fifo-editor-heading">Manual FIFO events</h3>
+        <p>Add one or more 32-bit words at a precise cycle. TX entries model host <span class="mono">StateMachine.put()</span> operations. RX injection is a debugger-only facility for preloading or testing RX-side behavior.</p>
+      </div>
+      <div id="fifo-level-summary" class="fifo-capacity mono" role="status" aria-live="polite" title="Selected-cycle FIFO levels: cycle start, after host events, and end of cycle">Selected cycle · TX <span id="fifo-tx-level" class="fifo-level">__INITIAL_TX_LEVEL__</span> / <span id="fifo-tx-capacity">__TX_CAPACITY__</span> · RX <span id="fifo-rx-level" class="fifo-level">__INITIAL_RX_LEVEL__</span> / <span id="fifo-rx-capacity">__RX_CAPACITY__</span></div>
+    </div>
+    <div class="fifo-controls">
+      <label class="fifo-cycle-field">Event cycle
+        <input id="fifo-cycle" type="number" min="0" step="1" value="0">
+      </label>
+      <label class="check fifo-follow-control"><input id="fifo-follow-selected" type="checkbox" checked> <span>Follow selected cycle</span></label>
+      <label class="fifo-values">Word(s)
+        <input id="fifo-values" type="text" value="0x0000ffff" spellcheck="false" placeholder="0xffff, 0x12345678, 42">
+      </label>
+      <button id="fifo-add-tx" type="button">Add word(s) to TX FIFO</button>
+      <button id="fifo-add-rx" type="button">Inject word(s) into RX FIFO</button>
+      <button id="fifo-rx-get" type="button">Host-read one RX word</button>
+    </div>
+    <div class="help-line">Hexadecimal, binary, octal, decimal, signs, and underscores are accepted; separate multiple words with commas, semicolons, or whitespace. Events are applied in written order before the PIO instruction at that cycle. The summary and debugger expose cycle-start, post-host-event, and end-of-cycle FIFO states, so a TX word remains visible even when <span class="mono">PULL</span> consumes it immediately. TX writes block when full. Debug RX injection appends while space exists and reports/drops extra words when RX is full.</div>
+  </div>
+  <div class="irq-editor" aria-labelledby="irq-editor-heading">
+    <div class="irq-editor-heading">
+      <div>
+        <h3 id="irq-editor-heading">Manual IRQ events</h3>
+        <p>Schedule a host/other-state-machine change to any PIO IRQ flag. The change is applied before the selected function executes its instruction at that cycle.</p>
+      </div>
+      <div id="irq-level-summary" class="irq-summary mono" role="status" aria-live="polite">Selected cycle · <span id="irq-flags">0b00000000</span></div>
+    </div>
+    <div class="irq-controls">
+      <label class="irq-cycle-field">Event cycle
+        <input id="irq-cycle" type="number" min="0" step="1" value="0">
+      </label>
+      <label class="check irq-follow-control"><input id="irq-follow-selected" type="checkbox" checked> <span>Follow selected cycle</span></label>
+      <label class="irq-index-field">IRQ flag
+        <select id="irq-index">
+          <option value="0">IRQ0</option><option value="1">IRQ1</option><option value="2">IRQ2</option><option value="3">IRQ3</option>
+          <option value="4">IRQ4</option><option value="5">IRQ5</option><option value="6">IRQ6</option><option value="7">IRQ7</option>
+        </select>
+      </label>
+      <button id="irq-set" type="button">Set / trigger IRQ</button>
+      <button id="irq-clear" type="button">Clear IRQ</button>
+    </div>
+    <div class="help-line"><span class="mono">WAIT 1 IRQ</span> consumes and clears a matching flag when the condition is met. <span class="mono">irq(block, n)</span> sets the flag and remains stalled until a scheduled clear event releases it.</div>
+  </div>
+  <div class="help-line"><b>GPIO tip:</b> one click creates a persistent transition. Create a pulse with two clicks—for example, set GPIO15 to 1 at cycle 100 and back to 0 at cycle 200. Event changes are applied before the PIO instruction in that cycle.</div>
+</section>
+
+<section class="controls panel" aria-label="Trace viewport controls">
+  <label>Start cycle<input id="start" type="number" min="0" value="0"></label>
+  <label>End cycle (exclusive)<input id="end" type="number" min="1" value="__DEFAULT_END__"></label>
+  <label>Pixels per cycle<input id="scale" type="range" min="8" max="56" value="24"></label>
+  <button id="draw" type="button">Redraw window</button>
+  <label class="inspect-slider">Inspect cycle result<input id="cycle" type="range" min="0" max="__MAX_CYCLE__" value="0"></label>
+</section>
+
+<div class="wave-wrap" id="wave-wrap">
+  <svg id="wave" role="img" aria-label="Editable PIO logic-analyzer trace"></svg>
+  <div id="wave-tooltip" class="wave-tooltip" hidden></div>
+</div>
+
+<section class="panel debugger" aria-labelledby="debugger-heading">
+  <div class="debugger-toolbar">
+    <div>
+      <h2 id="debugger-heading">Cycle debugger</h2>
+      <p id="debugger-moment" class="debugger-moment">The selected state is sampled at the end of cycle 0.</p>
+    </div>
+    <div class="debugger-actions">
+      <button id="continue-breakpoint" type="button" title="Continue to the next breakpoint (F5)" disabled>Continue ▶</button>
+      <button id="step-back" type="button" title="Previous cycle (Left Arrow)">← Step backward</button>
+      <button id="step-forward" type="button" title="Next cycle (Right Arrow)">Step forward →</button>
+      <label>Selected cycle
+        <input id="debug-cycle" type="number" min="0" max="__MAX_CYCLE__" step="1" value="0">
+      </label>
+      <label class="check"><input id="follow-source" type="checkbox" checked> Follow disassembly/source</label>
+    </div>
+  </div>
+
+  <div id="inspect" class="debugger-grid">
+    <div class="source-pane">
+      <label id="program-selector-wrap" class="program-selector source-program-selector" hidden>
+        <span>PIO function to debug</span>
+        <select id="program-select" aria-label="PIO function to debug"></select>
+        <small>All parsed <span class="mono">@rp2.asm_pio</span> functions and their state-machine configurations are listed here.</small>
+      </label>
+      <section class="disassembly-panel" aria-labelledby="disassembly-heading">
+        <div class="disassembly-header">
+          <div>
+            <h2 id="disassembly-heading">PIO disassembly</h2>
+            <p>Click the breakpoint gutter beside an instruction, then use <strong>Continue</strong> or <span class="mono">F5</span> to advance to its next execution.</p>
+          </div>
+          <div class="breakpoint-actions">
+            <span id="breakpoint-summary" class="breakpoint-summary" role="status" aria-live="polite">0 breakpoints</span>
+            <button id="clear-breakpoints" type="button" disabled>Clear breakpoints</button>
+          </div>
+        </div>
+        <div class="disassembly-columns" aria-hidden="true">
+          <span title="Breakpoint gutter">●</span><span>PC</span><span>Word</span><span>Instruction</span><span>Source</span>
+        </div>
+        <div id="pio-disassembly" class="pio-disassembly" role="list" aria-label="PIO disassembly with clickable breakpoint gutter"></div>
+      </section>
+      <div class="source-pane-header">
+        <div>
+          <h2>Input source</h2>
+          <div id="source-location" class="source-location">Loading source mapping…</div>
+        </div>
+        <div class="source-highlight-guide" role="note" aria-label="Source highlighting guide">
+          <div class="source-guide-title">Highlight guide — these are not checkboxes</div>
+          <div class="source-guide-items">
+            <span class="source-guide-item" title="The PIO instruction executed or stalled during the selected cycle.">
+              <span class="source-guide-marker current-instruction-marker" aria-hidden="true"></span>
+              <span><strong>Current instruction</strong><small>active line; its color reflects execute, stall, delay, or a met WAIT</small></span>
+            </span>
+            <span class="source-guide-item" title="Every source line that belongs to the selected PIO function.">
+              <span class="source-guide-marker selected-function-marker" aria-hidden="true"></span>
+              <span><strong>Selected PIO function</strong><small>all lines belonging to the selected function</small></span>
+            </span>
+            <span class="source-guide-item" title="A breakpoint set in the PIO disassembly is mirrored beside its mapped input-source line.">
+              <span class="source-guide-marker breakpoint-source-marker" aria-hidden="true"></span>
+              <span><strong>Breakpoint mirror</strong><small>set or remove it in the clickable PIO disassembly gutter above</small></span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div id="source-code" class="source-code" role="region" aria-label="Input Python source code" tabindex="0"></div>
+    </div>
+
+    <div class="debug-side">
+      <div class="debug-card state-card">
+        <h2 id="inspect-title">Cycle 0 result</h2>
+        <div id="state-sampling-note" class="sampling-note"></div>
+        <dl id="state"></dl>
+        <h2 class="subheading">Changes during this cycle</h2>
+        <ul id="state-changes" class="state-changes"></ul>
+        <h2 class="subheading">Displayed GPIO state</h2>
+        <div id="pin-state" class="pin-state-wrap"></div>
+      </div>
+
+      <div class="debug-card instruction-card">
+        <h2>Instruction and events</h2>
+        <div id="instruction" class="mono"></div>
+        <div id="wait-detail" class="wait-detail" hidden></div>
+        <ul id="events"></ul>
+        <h2 class="subheading">FIFO contents (front → back)</h2>
+        <div id="fifos" class="mono"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<details class="panel" open>
+  <summary>FIFO events</summary>
+  <div class="event-table-wrap">
+    <table>
+      <thead><tr><th>Cycle</th><th>Time</th><th>Operation</th><th>Value</th><th>Note</th><th></th></tr></thead>
+      <tbody id="fifo-events"></tbody>
+    </table>
+  </div>
+</details>
+
+<details class="panel" open>
+  <summary>IRQ events</summary>
+  <div class="event-table-wrap">
+    <table>
+      <thead><tr><th>Cycle</th><th>Time</th><th>IRQ</th><th>Action</th><th>Note</th><th></th></tr></thead>
+      <tbody id="irq-events"></tbody>
+    </table>
+  </div>
+</details>
+
+<details class="panel" open>
+  <summary>External GPIO transitions</summary>
+  <div class="event-table-wrap">
+    <table>
+      <thead><tr><th>Cycle</th><th>Time</th><th>GPIO</th><th>External state</th><th>Note</th><th></th></tr></thead>
+      <tbody id="input-events"></tbody>
+    </table>
+  </div>
+</details>
+
+<details class="panel">
+  <summary>Window data table</summary>
+  <div class="data-table-wrap">
+    <table><thead><tr><th>Cycle</th><th>Start time</th><th>Instruction PC</th><th>PC after</th><th>Phase</th><th>Instruction</th><th>IRQ flags</th><th>TX path / end</th><th>RX path / end</th><th>X</th><th>Y</th><th>ISR/count</th><th>OSR/count</th><th>Events</th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
+</details>
+
+<details class="panel">
+  <summary>Assumptions and warnings</summary>
+  <ul id="warnings">__WARNINGS__</ul>
+</details>
+</main>
+<footer class="site-footer">
+  <p>This tool is being provided by <a href="https://blog.stuehler-training.de/" target="_blank" rel="noopener noreferrer">blog.stuehler-training.de</a>.</p>
+  <details class="report-license">
+    <summary>License information for this standalone report</summary>
+    <p>The embedded Pico PIO Trace browser runtime is free software licensed under <span class="mono">GPL-3.0-or-later</span>. Pico PIO Trace does not claim ownership of the analyzed input source or trace data; those remain subject to their own terms.</p>
+    <pre>__GPL_LICENSE_TEXT__</pre>
+  </details>
+</footer>
+<script>
+window.__PIO_EMBEDDED_TRACE__=__TRACE_JSON__;
+window.__PIO_DISPLAY_PINS__=__PINS_JSON__;
+window.__PIO_EMBEDDED_TRACES__=__TRACE_CATALOG_JSON__;
+window.__PIO_TRACE_VERSION__="0.6.1";
+</script>
+<script>
+__SIMULATOR_JS__
+</script>
+<script>
+__VIEWER_JS__
+</script>
+</body>
+</html>

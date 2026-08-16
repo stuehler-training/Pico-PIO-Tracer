@@ -1,0 +1,14 @@
+include LICENSE
+include pio_trace.py
+include README.md
+include CHANGELOG.md
+include RESEARCH_NOTES.md
+include SUPPORT_MATRIX.md
+include TECHNICAL_DOCUMENTATION.md
+include THIRD_PARTY_NOTICES.md
+include SECURITY.md
+include LICENSES/MICROPYTHON-MIT.txt
+recursive-include pico_pio_trace/web *.html *.css *.js *.txt
+recursive-include examples *.py *.json
+recursive-include tests *.py *.cjs
+global-exclude __pycache__ *.py[cod] .DS_Store

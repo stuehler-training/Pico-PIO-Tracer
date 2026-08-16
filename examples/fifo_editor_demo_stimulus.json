@@ -1,0 +1,10 @@
+{
+  "events": [
+    {"cycle": 0, "type": "rx_put", "value": "0xdeadbeef", "note": "debug RX preload"},
+    {"cycle": 1, "type": "tx_put", "value": "0x11", "note": "first TX word"},
+    {"cycle": 1, "type": "tx_put", "value": "0x22", "note": "second TX word"},
+    {"cycle": 2, "type": "irq_set", "index": 0, "note": "release WAIT 1 IRQ in irq_editor_demo"},
+    {"cycle": 6, "type": "irq_clear", "index": 1, "note": "release irq(block, 1) in irq_editor_demo"},
+    {"cycle": 9, "type": "rx_get", "note": "host reads RX front"}
+  ]
+}
