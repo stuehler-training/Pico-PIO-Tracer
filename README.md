@@ -146,9 +146,8 @@ The tool does not execute the input Python file and contains no telemetry or net
 
 ## License
 
-The Pico PIO Trace implementation, command-line tool, emulator, renderers, browser runtime, documentation, and original project examples are distributed under the **GNU General Public License, version 3 or, at your option, any later version** (`GPL-3.0-or-later`). See [LICENSE](LICENSE).
+The Pico PIO Trace implementation, command-line tool, emulator, renderers, browser runtime, documentation, and original project examples are distributed under the **GNU General Public License See [LICENSE](LICENSE).
 
-Three files contain material adapted from the reviewed MicroPython **v1.28.0** release and remain under the upstream **MIT License**. The files are `examples/uart_tx.py`, `tests/reference_micropython_encoder.py`, and `tests/test_upstream_examples.py`. Their provenance and copyright notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), with the full license text in [LICENSES/MICROPYTHON-MIT.txt](LICENSES/MICROPYTHON-MIT.txt). Consequently, the distribution-level SPDX expression in `pyproject.toml` is `GPL-3.0-or-later AND MIT`; this is not dual licensing of the main runtime.
 
 **Provided by [blog.stuehler-training.de](https://blog.stuehler-training.de)**
 
